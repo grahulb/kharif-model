@@ -52,7 +52,7 @@ dict_SoilContent = {
 		'Ksat mm/hr',
 		'Bulk Density',
 		'AWC'
-	),
+	),	
 	 'clay loam': ('D', '32', '34', '0', '0.206', '0.341', '0.442', '2.7', '1.48', '0.14'),
 	 'clayey': ('D', '28', '51', '0', '0.303', '0.427', '0.487', '0.52', '1.36', '0.12'),
 	 'gravelly clay': ('D', '23', '48', '10', '0.285', '0.415', '0.488', '0.83', '1.36', '0.12'),
@@ -72,7 +72,7 @@ dict_SoilContent = {
 	 'silty clay loam': ('D', '11', '34', '0', '0.206', '0.371', '0.47', '2.65', '1.41', '0.17'),
 	 'silty loam': ('B', '19', '16', '0', '0.105', '0.291', '0.418', '6.97', '1.54', '0.19'),
 	 'waterbody mask': ('D', '28', '51', '0', '0.303', '0.427', '0.487', '0.52', '1.36', '0.12'),
- 'habitation mask': ('D', '32', '34', '0', '0.206', '0.341', '0.442', '2.7', '1.48', '0.14')
+	 'habitation mask': ('D', '32', '34', '0', '0.206', '0.341', '0.442', '2.7', '1.48', '0.14')
 }
 
 #Lookup for SCS curve no based on land ussage and HSG: 
@@ -113,7 +113,12 @@ dict_crop = {
 	'sunflower':[[[25,0.63],[35,0.82],[45,1.12],[25,1.23]],0.45],
 	'tur':[[[20,0.45],[30,0.85],[35,1.15],[15,1.05]],0.45],
 	'grapes':[[[20,0.3],[40,0.7],[120,1.15],[60,2]],0.5],
-	'maize':[[[20,0.55],[35,1],[40,1.23],[30,0.67]],0.55]
+	'maize':[[[20,0.55],[35,1],[40,1.23],[30,0.67]],0.55],
+	'deciduous - dense crop': [[[45,0.3],[60,1.15],[90,0.7],[170,0.1]],0.8],
+	'deciduous open crop': [[[30,0.3],[60,0.7],[60,0.5],[215,0.2]],0.6],
+	'scrub dense crop': [[[30,0.3],[60,0.7],[60,0.5],[215,0.2]],0.6],
+	'scrub forest crop': [[[30,0.3],[60,0.7],[60,0.5],[215,0.2]],0.6],
+	'scrub open crop': [[[120,0.5],[60,0.25],[120,0.15],[65,0.1]],0.5]
 }
 
 #Lookup for Crop and root zone
@@ -129,10 +134,23 @@ dict_crop_root = {
 	'sunflower':1.15,
 	'tur':0.75,
 	'grapes':0.9,
-	'maize':1.35
-}
+	'maize':1.35,
+	'deciduous - dense crop': 3,
+	'deciduous open crop': 1.5,
+	'scrub dense crop': 1.5,
+	'scrub forest crop': 1.5,
+	'scrub open crop': 0.5
+	}
 
 #Long Kharif crops list
 long_kharif_crops = ['cotton','orange','grapes','tur']
 
+#Other LU to crops mapping 	list
+other_LU_crops={
+	'deciduous - dense':'deciduous - dense crop',
+	'deciduous open': 'deciduous open crop',
+	'scrub dense': 'scrub dense crop',
+	'scrub forest': 'scrub forest crop',
+	'scrub open': 'scrub open crop'
+}
 ########	Lookup Dictionaries End		########
