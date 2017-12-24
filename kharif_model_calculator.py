@@ -498,6 +498,18 @@ class KharifModelCalculator:
 		for key in sorted_keys:	writer.writerow([key, '{0:.2f}'.format(plot_vulnerability_dict[key][0]), round((plot_vulnerability_dict[key][0])/50), '{0:.2f}'.format(plot_vulnerability_dict[key][1]), round((plot_vulnerability_dict[key][1])/50)])
 		csvwrite.close()
 	
+	def compute_cadestral_vulnerability_for_display(self,output_grid_points,output_cadestral_points):
+		self.cadestral_points_per_plot = {}
+		for p in (output_grid_points+output_cadestral_points):
+			if(p.container_polygons[CADESTRAL_LABEL] in self.cadestral_points_per_plot):
+				self.cadestral_points_per_plot[p.container_polygons[CADESTRAL_LABEL]].append(p.budget.PET_minus_AET_crop_end)
+			else:
+				self.cadestral_points_per_plot[p.container_polygons[CADESTRAL_LABEL]] = [p.budget.PET_minus_AET_crop_end]
+		for k,v in self.cadestral_points_per_plot.items():
+			self.cadestral_points_per_plot[k] = sum(v)/len(v)
+
+
+
 	def calculate(self, 
 					crop_name,
 					pointwise_output_csv_filename,
@@ -520,11 +532,11 @@ class KharifModelCalculator:
 		
 		self.output_grid_points = self.generate_output_points_grid(input_points_filename)
 		self.filter_out_points_outside_boundary()
-		self.set_container_polygon_of_points_for_layers(self.output_grid_points, [self.soil_layer, self.lulc_layer])
-		self.output_grid_points = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] != 'water', self.output_grid_points)
+		self.set_container_polygon_of_points_for_layers(self.output_grid_points, [self.soil_layer, self.lulc_layer, self.cadestral_layer])
+		self.output_grid_points = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] not in ['habitation', 'water'], self.output_grid_points)
 		print 'Number of grid points to process : ', len(self.output_grid_points)
 		for zone_id in self.zone_points_dict:
-			self.zone_points_dict[zone_id] = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] != 'water', self.zone_points_dict[zone_id])
+			self.zone_points_dict[zone_id] = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] not in ['habitation', 'water'], self.zone_points_dict[zone_id])
 		self.set_slope_at_points(self.output_grid_points)
 		self.set_crop_at_points(self.output_grid_points,crop_name)
 		for point in self.output_grid_points:
@@ -536,14 +548,15 @@ class KharifModelCalculator:
 		self.filter_out_cadestral_plots_outside_boundary()
 		#~ self.cadestral_points_dict, 
 		self.output_cadestral_points = self.generate_output_points_for_cadestral_plots()
-		self.set_container_polygon_of_points_for_layers(self.output_cadestral_points, [self.soil_layer, self.lulc_layer])
-		self.output_cadestral_points = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] != 'water', self.output_cadestral_points)
+		self.set_container_polygon_of_points_for_layers(self.output_cadestral_points, [self.soil_layer, self.lulc_layer,self.cadestral_layer])
+		self.output_cadestral_points = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] not in ['habitation', 'water'], self.output_cadestral_points)
 		print 'Number of cadestral points to process : ', len(self.output_cadestral_points)
 		self.set_slope_at_points(self.output_cadestral_points)
 		self.set_crop_at_points(self.output_cadestral_points,crop_name)
 		for point in self.output_cadestral_points:
 			point.run_model(self.rain, self.PET, PET_sum, PET_sum_cropend, start_date_index, end_date_index,self.duration-1)
 		self.compute_and_output_cadestral_vulnerability_to_csv(cadestral_vulnerability_csv_filename)
-		
+
+		self.compute_cadestral_vulnerability_for_display(self.output_grid_points,self.output_cadestral_points)
 		print("--- %s seconds ---" % (time.time() - start_time))
 		print("done")
