@@ -273,7 +273,7 @@ class KharifModelCalculator:
 					break
 			return i
 		self.initial_dry = compute_initial_period()
-		self.duration=sum (i[0] for i in dict_crop['soyabean'][0])
+		self.duration=sum (i[0] for i in dict_crop[crop_name][0])
 		self.duration+=self.initial_dry
 		self.duration=max(self.duration,183)
 		#Computation of ET0 from June to May
@@ -441,6 +441,45 @@ class KharifModelCalculator:
 			zb.GW_rech_monsoon_end = sum([p.budget.GW_rech_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
 			zb.PET_minus_AET_monsoon_end = sum([p.budget.PET_minus_AET_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
 			zb.PET_minus_AET_crop_end = sum([p.budget.PET_minus_AET_crop_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
+
+	
+	def output_zonewise_budget_to_csv_agri(self, zonewise_budget_csv_filename, PET_sum_cropend, PET_sum,rain_sum):
+		csvwrite = open(self.path + zonewise_budget_csv_filename,'wb')
+		writer = csv.writer(csvwrite)
+		writer.writerow([''] + ['zone-'+str(ID)+'-'+t	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
+		writer.writerow(['Rainfall'] + [rain_sum	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
+		writer.writerow(['Runoff in Monsoon'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].runoff_monsoon_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
+		writer.writerow(['Infiltration in Monsoon'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].infil_monsoon_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
+		writer.writerow(['Soil Moisture Crop end'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].sm_crop_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
+		writer.writerow(['GW Recharge in Monsoon'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].GW_rech_monsoon_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
+		writer.writerow(['AET Crop End'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].AET_crop_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
+		writer.writerow(['PET Crop End'] + [PET_sum_cropend[self.crop_name] if (ag_or_non_ag == 'agricultural' or ag_or_non_ag == 'zone' ) else PET_sum_cropend[other_LU_crops[t]] for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag] ])
+		writer.writerow(['AET Monsoon End'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].AET_monsoon_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
+		writer.writerow(['PET Monsoon End'] + [PET_sum[self.crop_name] if (ag_or_non_ag == 'agricultural' or ag_or_non_ag == 'zone' ) else PET_sum_cropend[other_LU_crops[t]] for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag] ])
+		writer.writerow(['Monsoon Deficit(PET-AET)'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].PET_minus_AET_monsoon_end	for ID in self.zonewise_budgets		for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
+		writer.writerow(['Crop duration Deficit(PET-AET)'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].PET_minus_AET_crop_end	for ID in self.zonewise_budgets		for ag_or_non_ag in ['agricultural']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
+		csvwrite.close()
+
+	def compute_zonewise_budget_LU(self):
+		self.zonewise_budgets = OrderedDict()
+		for zone_id in self.zone_points_dict:
+			zone_points = self.zone_points_dict[zone_id]
+			no_of_zone_points = len(zone_points)
+			if no_of_zone_points == 0:	continue
+			self.zonewise_budgets[zone_id] = {'agricultural': OrderedDict(), 'non-agricultural': OrderedDict()}
+			all_agricultural_points = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] in ['agriculture', 'fallow land'], zone_points)
+			non_agricultural_points_dict = {lulc_type: filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] == lulc_type, zone_points)	for lulc_type in self.lulc_types if lulc_type not in ['agriculture', 'fallow land', 'water']}
+			
+			no_of_agricultural_type_points = len(all_agricultural_points)
+			zb = self.zonewise_budgets[zone_id]['agricultural']['Agricultural Total'] = Budget()
+			zb.sm_crop_end = sum([p.budget.sm_crop_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
+			zb.runoff_monsoon_end = sum([p.budget.runoff_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
+			zb.infil_monsoon_end = sum([p.budget.infil_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
+			zb.AET_crop_end = sum([p.budget.AET_crop_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
+			zb.AET_monsoon_end = sum([p.budget.AET_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
+			zb.GW_rech_monsoon_end = sum([p.budget.GW_rech_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
+			zb.PET_minus_AET_monsoon_end = sum([p.budget.PET_minus_AET_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
+			zb.PET_minus_AET_crop_end = sum([p.budget.PET_minus_AET_crop_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
 			
 			no_of_non_ag_lulc_type_points = {}
 			for lulc_type in non_agricultural_points_dict:
@@ -475,7 +514,7 @@ class KharifModelCalculator:
 		writer.writerow([''] + ['zone-'+str(ID)+'-'+t	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural', 'non-agricultural', 'zone']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
 		writer.writerow(['Rainfall'] + [rain_sum	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural', 'non-agricultural', 'zone']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
 		writer.writerow(['Runoff in Monsoon'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].runoff_monsoon_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural', 'non-agricultural', 'zone']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
-		writer.writerow(['Infiltration in Monsoon'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].infil_monsoon_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural', 'non-agricultural', 'zone']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
+		writer.writerow(['Infilitration in Monsoon'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].infil_monsoon_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural', 'non-agricultural', 'zone']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
 		writer.writerow(['Soil Moisture Crop end'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].sm_crop_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural', 'non-agricultural', 'zone']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
 		writer.writerow(['GW Recharge in Monsoon'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].GW_rech_monsoon_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural', 'non-agricultural', 'zone']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
 		writer.writerow(['AET Crop End'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].AET_crop_end	for ID in self.zonewise_budgets	for ag_or_non_ag in ['agricultural', 'non-agricultural', 'zone']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
@@ -485,6 +524,7 @@ class KharifModelCalculator:
 		writer.writerow(['Monsoon Deficit(PET-AET)'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].PET_minus_AET_monsoon_end	for ID in self.zonewise_budgets		for ag_or_non_ag in ['agricultural', 'non-agricultural', 'zone']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
 		writer.writerow(['Crop duration Deficit(PET-AET)'] + [self.zonewise_budgets[ID][ag_or_non_ag][t].PET_minus_AET_crop_end	for ID in self.zonewise_budgets		for ag_or_non_ag in ['agricultural', 'non-agricultural', 'zone']	for t in self.zonewise_budgets[ID][ag_or_non_ag]])
 		csvwrite.close()
+
 		
 	def compute_and_output_cadestral_vulnerability_to_csv(self, cadestral_vulnerability_csv_filename):
 		plot_vulnerability_dict = {
@@ -494,7 +534,7 @@ class KharifModelCalculator:
 		sorted_keys = sorted(plot_vulnerability_dict.keys(), key=lambda ID:	plot_vulnerability_dict[ID], reverse=True)
 		csvwrite = open(self.path + cadestral_vulnerability_csv_filename,'w+b')
 		writer = csv.writer(csvwrite)
-		writer.writerow(['Plot ID', 'Crop end Vulnerability', 'Deficit Waterings', 'Monsoon end Vulnerability', 'Deficit Waterings'])
+		writer.writerow(['Plot ID', 'Crop end Vulnerability', 'Crop end Deficit Waterings', 'Monsoon end Vulnerability', 'Crop end Deficit Waterings'])
 		for key in sorted_keys:	writer.writerow([key, '{0:.2f}'.format(plot_vulnerability_dict[key][0]), round((plot_vulnerability_dict[key][0])/50), '{0:.2f}'.format(plot_vulnerability_dict[key][1]), round((plot_vulnerability_dict[key][1])/50)])
 		csvwrite.close()
 	
@@ -514,6 +554,7 @@ class KharifModelCalculator:
 					crop_name,
 					pointwise_output_csv_filename,
 					zonewise_budget_csv_filename,
+					zonewise_budget_csv_filename_LU,
 					cadestral_vulnerability_csv_filename,
 					start_date_index=0,
 					end_date_index=182,
@@ -543,8 +584,9 @@ class KharifModelCalculator:
 			point.run_model(self.rain, self.PET, PET_sum, PET_sum_cropend, start_date_index, end_date_index,self.duration-1)
 		self.output_point_results_to_csv(pointwise_output_csv_filename)
 		self.compute_zonewise_budget()
-		self.output_zonewise_budget_to_csv(zonewise_budget_csv_filename, PET_sum_cropend,PET_sum, rain_sum)
-		
+		self.output_zonewise_budget_to_csv_agri(zonewise_budget_csv_filename, PET_sum_cropend,PET_sum, rain_sum)
+		self.compute_zonewise_budget_LU()
+		self.output_zonewise_budget_to_csv(zonewise_budget_csv_filename_LU, PET_sum_cropend,PET_sum, rain_sum)
 		self.filter_out_cadestral_plots_outside_boundary()
 		#~ self.cadestral_points_dict, 
 		self.output_cadestral_points = self.generate_output_points_for_cadestral_plots()
