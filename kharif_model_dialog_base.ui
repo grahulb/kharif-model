@@ -70,7 +70,7 @@
      <string>Browse</string>
     </property>
    </widget>
-   <widget class="QLineEdit" name="cadestral_layer_filename">
+   <widget class="QLineEdit" name="cadastral_layer_filename">
     <property name="geometry">
      <rect>
       <x>320</x>
@@ -123,7 +123,7 @@
      </rect>
     </property>
    </widget>
-   <widget class="QPushButton" name="cadestral_layer_browse">
+   <widget class="QPushButton" name="cadastral_layer_browse">
     <property name="geometry">
      <rect>
       <x>530</x>
@@ -154,7 +154,7 @@
      <rect>
       <x>320</x>
       <y>240</y>
-      <width>191</width>
+      <width>121</width>
       <height>22</height>
      </rect>
     </property>
@@ -247,7 +247,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Cadestral Map Vector Layer :</string>
+     <string>Cadastral Map Vector Layer :</string>
     </property>
    </widget>
    <widget class="QPushButton" name="slope_layer_browse">
@@ -356,6 +356,32 @@
     </property>
     <property name="text">
      <string>Browse</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_12">
+    <property name="geometry">
+     <rect>
+      <x>480</x>
+      <y>220</y>
+      <width>91</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Sowing Threshold:</string>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="sowing_threshold">
+    <property name="geometry">
+     <rect>
+      <x>480</x>
+      <y>240</y>
+      <width>42</width>
+      <height>22</height>
+     </rect>
+    </property>
+    <property name="maximum">
+     <number>1000</number>
     </property>
    </widget>
   </widget>

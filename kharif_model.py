@@ -197,11 +197,12 @@ class KharifModel:
 			zones_layer = self.iface.addVectorLayer(path + '/Zones.shp', 'Zones', 'ogr')
 			soil_layer = self.iface.addVectorLayer(path + '/Soil.shp', 'Soil Cover', 'ogr')
 			lulc_layer = self.iface.addVectorLayer(path + '/LULC.shp', 'Land-Use-Land-Cover', 'ogr')
-			cadestral_layer = self.iface.addVectorLayer(path + '/Cadestral.shp', 'Cadestral Map', 'ogr')
+			cadastral_layer = self.iface.addVectorLayer(path + '/Cadastral.shp', 'Cadastral Map', 'ogr')
 			slope_layer = self.iface.addRasterLayer(path + '/Slope.tif', 'Slope')
 			#~ drainage_layer = self.iface.addRasterLayer(path + '/Drainage.shp', 'Drainage', 'ogr')
 			
 			rainfall_csv = path + '/Rainfall.csv'
+			sowing_threshold = 30
 			crop = 'soyabean'
 			interval_points = [50, 100]
 		else:
@@ -212,16 +213,17 @@ class KharifModel:
 			zones_layer = self.iface.addVectorLayer(self.dlg.zones_layer_filename.text(), 'Zones', 'ogr')
 			soil_layer = self.iface.addVectorLayer(self.dlg.soil_layer_filename.text(), 'Soil Cover', 'ogr')
 			lulc_layer = self.iface.addVectorLayer(self.dlg.lulc_layer_filename.text(), 'Land-Use-Land-Cover', 'ogr')
-			cadestral_layer = self.iface.addVectorLayer(self.dlg.cadestral_layer_filename.text(), 'Cadestral Map', 'ogr')
+			cadastral_layer = self.iface.addVectorLayer(self.dlg.cadastral_layer_filename.text(), 'Cadastral Map', 'ogr')
 			slope_layer = self.iface.addRasterLayer(self.dlg.slope_layer_filename.text(), 'Slope')
 			if self.dlg.drainage_layer_filename.text() != '':
 				drainage_layer = self.iface.addRasterLayer(self.dlg.drainage_layer_filename.text(), 'Drainage', 'ogr')
 			
 			rainfall_csv = self.dlg.rainfall_csv_filename.text()
+			sowing_threshold = self.dlg.sowing_threshold.value()
 			crop = self.dlg.crop_combo_box.currentText()
 			interval_points = [int(self.dlg.colour_code_intervals_list_widget.item(i).text().split('-')[0])	for i in range(1,self.dlg.colour_code_intervals_list_widget.count())]
 			
-			#~ print path, zones_layer, soil_layer, lulc_layer, cadestral_layer, slope_layer, drainage_layer, rainfall_csv
+			#~ print path, zones_layer, soil_layer, lulc_layer, cadastral_layer, slope_layer, drainage_layer, rainfall_csv
 			
 		
 		#~ start_qdate = self.dlg.from_date_edit.date()
@@ -233,10 +235,10 @@ class KharifModel:
 		pointwise_output_csv_filename = '/kharif_model_pointwise_output.csv'
 		zonewise_budget_csv_filename = '/kharif_model_zonewise_budget.csv'
 		zonewise_budget_csv_filename_LU = '/kharif_model_zonewise_LU_budget.csv'
-		cadestral_vulnerability_csv_filename = '/kharif_model_cadestral_vulnerability.csv'
-		model_calculator = KharifModelCalculator(path, zones_layer, soil_layer, lulc_layer, cadestral_layer, slope_layer, rainfall_csv)
+		cadastral_vulnerability_csv_filename = '/kharif_model_cadastral_vulnerability.csv'
+		model_calculator = KharifModelCalculator(path, zones_layer, soil_layer, lulc_layer, cadastral_layer, slope_layer, rainfall_csv)
 		
-		model_calculator.calculate(crop, pointwise_output_csv_filename, zonewise_budget_csv_filename, zonewise_budget_csv_filename_LU, cadestral_vulnerability_csv_filename)
+		model_calculator.calculate(crop, pointwise_output_csv_filename, zonewise_budget_csv_filename, zonewise_budget_csv_filename_LU, cadastral_vulnerability_csv_filename, sowing_threshold)
 		uri = 'file:///' + path + pointwise_output_csv_filename + '?delimiter=%s&crs=epsg:32643&xField=%s&yField=%s' % (',', 'X', 'Y')
 		kharif_model_output_layer = QgsVectorLayer(uri, 'Kharif Model Output','delimitedtext')
 		graduated_symbol_renderer_range_list = []
@@ -269,13 +271,14 @@ class KharifModel:
 			ET_D_max = max([point.budget.PET_minus_AET_monsoon_end	for point in model_calculator.output_grid_points])
 			opacity = 1
 			intervals_count = self.dlg.colour_code_intervals_list_widget.count()
+			geometry_type = kharif_model_monsoon_end_output_layer.geometryType()
 			for i in range(intervals_count):
 				percent_interval_start_text, percent_interval_end_text = self.dlg.colour_code_intervals_list_widget.item(i).text().split('-')
 				interval_min = 0 if percent_interval_start_text == '0' else (int(percent_interval_start_text)*ET_D_max/100.0 + 0.01)
 				interval_max = (int(percent_interval_end_text)*ET_D_max/100.0)
 				label = "{0:.2f} - {1:.2f}".format(interval_min, interval_max)
 				colour = QColor(int(255*(1-(i+1.0)/(intervals_count+1.0))), 0, 0)	# +1 done to tackle boundary cases
-				symbol = QgsSymbolV2.defaultSymbol(kharif_model_monsoon_end_output_layer.geometryType())
+				symbol = QgsSymbolV2.defaultSymbol(geometry_type)
 				symbol.setColor(colour)
 				symbol.setAlpha(opacity)
 				interval_range = QgsRendererRangeV2(interval_min, interval_max, symbol, label)
