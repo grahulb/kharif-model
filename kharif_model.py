@@ -299,6 +299,8 @@ class KharifModel:
 		self.iface.mapCanvas().setExtent(zones_layer.extent())
 		self.iface.mapCanvas().mapRenderer().setDestinationCrs(zones_layer.crs())
 
+		self.iface.mapCanvas().refresh()
+
 			
 		if self.dlg.save_image_group_box.isChecked():
 			QTimer.singleShot(1000, lambda :	self.iface.mapCanvas().saveAsImage(self.dlg.save_image_filename.text()))

@@ -27,14 +27,14 @@ CADASTRAL_LABEL = 'Cadastral'
 CALCULATE_FOR_LULC_TYPES = ['agriculture', 'fallow land']
 
 class Budget:
-	
+
 	def __init__(self):
 		self.sm, self.runoff, self.infil, self.AET, self.GW_rech = [],[],[],[],[]
-	
+
 	def summarize(self, PET_sum, PET_sum_cropend, start_date_index, end_date_index, crop_end_index):
 		self.sm_crop_end = self.sm[crop_end_index]
- 		self.sm_monsoon_end = self.sm[end_date_index]
-		self.runoff_crop_end = sum(self.runoff[start_date_index:crop_end_index+1]) 		
+		self.sm_monsoon_end = self.sm[end_date_index]
+		self.runoff_crop_end = sum(self.runoff[start_date_index:crop_end_index+1])
 		self.runoff_monsoon_end = sum(self.runoff[start_date_index:end_date_index+1])
 		self.infil_crop_end = sum(self.infil[start_date_index:crop_end_index+1])
 		self.infil_monsoon_end = sum(self.infil[start_date_index:end_date_index+1])
@@ -45,35 +45,35 @@ class Budget:
 		self.PET_minus_AET_monsoon_end = PET_sum - self.AET_monsoon_end
 		self.PET_minus_AET_post_monsoon= (PET_sum_cropend - self.AET_crop_end)-self.PET_minus_AET_monsoon_end
 		self.PET_minus_AET_crop_end= (PET_sum_cropend - self.AET_crop_end)
-	
+
 	def get_PET_minus_AET(self, PET):
 		pass
-	
+
 class Point:
-	
+
 	def __init__(self, qgsPoint):
 		self.qgsPoint = qgsPoint
 		self.container_polygons = {}
 		self.slope = None
 		self.budget = Budget()
 		self.crop_name = None
-	
+
 	def run_model(self, rain, PET, PET_sum, PET_sum_cropend, start_date_index, end_date_index,crop_end_index):
 		self.setup_for_daily_computations()
 		PET = PET[self.crop_name]
 		PET_sum = PET_sum[self.crop_name]
 		PET_sum_cropend = PET_sum_cropend[self.crop_name]
 		self.SM1_fraction = self.layer2_moisture = self.WP
-		
+
 		for day in range (0,max(end_date_index,crop_end_index)+1):
 			self.primary_runoff(day, rain)
 			self.aet(day, PET)
 			self.percolation_below_root_zone(day)
 			self.secondary_runoff(day)
 			self.percolation_to_GW(day)
-		
+
 		self.budget.summarize(PET_sum, PET_sum_cropend, start_date_index, end_date_index,crop_end_index)
-	
+
 	def setup_for_daily_computations(self):
 		"""
 		"""
@@ -84,12 +84,12 @@ class Point:
 		self.WP = round(float(dict_SoilContent[texture][4]),4)
 		self.FC = round(float(dict_SoilContent[texture][5]),4)
 		depth_value = float(dict_SoilDep[poly_soil[Depth].lower()])
-		
+
 		lu_Type = dict_lulc[self.container_polygons[LULC_LABEL][Desc].lower()]
-		
+
 		HSG =  dict_SoilContent[texture][0]
 		cn_val = int(dict_RO[lu_Type][HSG])
-		
+
 		Sat_depth = self.Sat * depth_value*1000
 		self.WP_depth = self.WP*depth_value*1000
 		FC_depth = self.FC*depth_value*1000
@@ -97,25 +97,25 @@ class Point:
 		if(depth_value <= ROOT_LEVEL): #thin soil layer
 			self.SM1 = depth_value - 0.01;	self.SM2 = 0.01
 		else:
-			self.SM1 = ROOT_LEVEL;	self.SM2 = depth_value - ROOT_LEVEL 
-		
+			self.SM1 = ROOT_LEVEL;	self.SM2 = depth_value - ROOT_LEVEL
+
 		cn_s = cn_val
 		cn3 = cn_s *exp(0.00673*(100-cn_s))
 		if (self.slope > 5.0):
 			cn_s = (((cn3-cn_val)/float(3))*(1-2*exp(-13.86*self.slope * 0.01))) + cn_val
 		cn1_s = cn_s - 20*(100-cn_s)/float(100-cn_s+exp(2.533-0.0636*(100-cn_s)))
 		cn3_s = cn_s *exp(0.00673*(100-cn_s))
-		
+
 		self.Smax = 25.4 * (1000/float(cn1_s) - 10)
 		S3 = 25.4 * (1000/float(cn3_s) - 10)
 		self.W2 = (log((FC_depth- self.WP_depth)/(1-float(S3/self.Smax)) - (FC_depth - self.WP_depth )) - log ((Sat_depth - self.WP_depth)/(1-2.54/self.Smax) - (Sat_depth - self.WP_depth)))/((Sat_depth- self.WP_depth) - (FC_depth - self.WP_depth))
 		self.W1 = log((FC_depth- self.WP_depth)/(1- S3/self.Smax) - (FC_depth - self.WP_depth)) + self.W2 * (FC_depth -self.WP_depth)
-		
+
 		TT_perc = (Sat_depth- FC_depth)/Ksat	#SWAT equation 2:3.2.4
 		self.daily_perc_factor = 1 - exp(-24 / TT_perc)	#SWAT equation 2:3.2.3
-		
+
 		self.depletion_factor = dict_crop[self.crop_name][1]
-		
+
 	def primary_runoff(self, day, rain):
 		"""
 		Retention parameter 'S_swat' using SWAT equation 2:1.1.6
@@ -127,7 +127,7 @@ class Point:
 		self.budget.sm.append((self.SM1_fraction * self.SM1 + self.layer2_moisture * self.SM2) * 1000)
 		self.SW = self.budget.sm[-1] - self.WP_depth
 		S_swat = self.Smax*(1 - self.SW/(self.SW + exp(self.W1 - self.W2 * self.SW)))
-		
+
 		Cn_swat = 25400/float(S_swat+254)
 		Ia_swat = 0.2 * S_swat
 		#~ print 'len(rain), day : ', len(rain), day
@@ -138,7 +138,7 @@ class Point:
 		self.budget.infil.append(rain[day] - self.budget.runoff[day])
 		assert len(self.budget.runoff) == day+1, (self.budget.runoff, day)
 		assert len(self.budget.infil) == day+1
-	
+
 	def aet(self, day, PET):
 		"""
 		Water Stress Coefficient 'KS' using FAO Irrigation and Drainage Paper 56, page 167 and
@@ -147,13 +147,13 @@ class Point:
 			page 161 equation 81
 		"""
 		if (self.SM1_fraction < self.WP):
-			KS= 0 
+			KS= 0
 		elif (self.SM1_fraction > (self.FC *(1- self.depletion_factor) + self.depletion_factor * self.WP)):
 			KS = 1
-		else :	
+		else :
 			KS = (self.SM1_fraction - self.WP)/(self.FC - self.WP) /(1- self.depletion_factor)
 		self.budget.AET.append( KS * PET[day] )
-	
+
 	def percolation_below_root_zone(self, day):
 		"""
 		Calculate soil moisture (fraction) 'SM1_before' as the one after infiltration and (then) AET occur,
@@ -172,7 +172,7 @@ class Point:
 		else :
 			self.R_to_second_layer = 0
 		self.SM2_before = (self.layer2_moisture*self.SM2*1000 + self.R_to_second_layer)/self.SM2/1000
-	
+
 	def secondary_runoff(self, day):
 		"""
 		
@@ -182,23 +182,23 @@ class Point:
 		else:
 			sec_run_off = 0
 		self.SM1_fraction = min((self.SM1_before*self.SM1*1000 - self.R_to_second_layer)/self.SM1/1000,self.Sat)
-	
+
 	def percolation_to_GW(self, day):
 		"""
 		
 		"""
 		self.budget.GW_rech.append(max((self.SM2_before - self.FC)*self.SM2*self.daily_perc_factor*1000,0))
 		self.layer2_moisture = min(((self.SM2_before*self.SM2*1000- self.budget.GW_rech[day])/self.SM2/1000),self.Sat)
-	
+
 
 class VectorLayer:
-	
+
 	def __init__(self, qgsLayer, name=''):
 		self.qgsLayer = qgsLayer
 		self.name = name
 		self.feature_dict = {f.id(): f for f in qgsLayer.getFeatures()}
 		self.index = QgsSpatialIndex(qgsLayer.getFeatures())
-	
+
 	def get_polygon_containing_point(self, point):
 		intersector_ids = self.index.intersects( QgsRectangle( point.qgsPoint, point.qgsPoint ) )
 		for intersector_id in intersector_ids:
@@ -214,7 +214,7 @@ class KharifModelCalculator:
 	"""
 	The actual algorithm for calculating results of the Kharif Model
 	"""
-	
+
 	def __init__(self, path, zones_layer, soil_layer, lulc_layer, cadastral_layer, slope_layer, rainfall_csv_path):
 		self.zones_layer = VectorLayer(zones_layer, BOUNDARY_LABEL)
 		self.soil_layer = VectorLayer(soil_layer, SOIL_LABEL)
@@ -225,9 +225,9 @@ class KharifModelCalculator:
 		cadastral_polygon_ids = self.cadastral_layer.feature_dict.keys()
 		#~ self.cadastral_points_dict = dict(zip(cadastral_polygon_ids, [[]	for i in range(len(cadastral_polygon_ids))]))
 		#~ print 'zone_points_dict : ', self.zone_points_dict
-		
+
 		self.slope_layer = slope_layer
-		
+
 		# Working Directory path
 		self.path = path
 
@@ -237,7 +237,7 @@ class KharifModelCalculator:
 		rainfall_csv = open(rainfall_csv_path)
 		self.rain = [int(row["Rainfall"]) for row in csv.DictReader(rainfall_csv)]
 		print 'len(rain) = ', len(self.rain)
-	
+
 	def pet_calculation(self, crop_name, sowing_threshold):
 		test_csv = open(self.path_et)
 		a = [float(row["ET0"]) for row in csv.DictReader(test_csv)]
@@ -250,9 +250,9 @@ class KharifModelCalculator:
 		def pet_crop(crop):
 			Kc_crop = []
 			for i in range (len(dict_crop[crop][0])):
-			    stage = dict_crop[crop][0][i][0]
-			    Kc = dict_crop[crop][0][i][1] 
-			    Kc_crop.extend([Kc]*stage)
+				stage = dict_crop[crop][0][i][0]
+				Kc = dict_crop[crop][0][i][1]
+				Kc_crop.extend([Kc]*stage)
 			Kc_crop = [0]*self.initial_dry+ Kc_crop
 			Kc_len=len(Kc_crop)
 			if(Kc_len<= self.duration):
@@ -263,7 +263,7 @@ class KharifModelCalculator:
 
 		#computes initial period where total rainfall is below the sowing-threshold for sowing date
 		def compute_initial_period():
-			rain_sum = 0 
+			rain_sum = 0
 			for i in range (0,len(self.rain)):
 				if (rain_sum < sowing_threshold):
 					rain_sum += self.rain[i]
@@ -307,7 +307,7 @@ class KharifModelCalculator:
 					filtered_feature_dict[polygon_id] = self.cadastral_layer.feature_dict[polygon_id]
 					break
 		self.cadastral_layer.feature_dict = filtered_feature_dict
-	
+
 	def generate_output_points_grid(self, input_points_filename=None):
 		if input_points_filename is None:
 			xminB =  self.zones_layer.qgsLayer.extent().xMinimum()
@@ -329,7 +329,7 @@ class KharifModelCalculator:
 			pass
 		output_points = [Point(QgsPoint(x,y))	for x in x_List	for y in y_List]
 		return output_points
-	
+
 	def filter_out_points_outside_boundary(self):
 		filtered_points = []
 		for point in self.output_grid_points:
@@ -339,7 +339,7 @@ class KharifModelCalculator:
 				self.zone_points_dict[polygon.id()].append(point)
 				filtered_points.append(point)
 		self.output_grid_points = filtered_points
-	
+
 	def generate_output_points_for_cadastral_plots(self):
 		#~ cadastral_points_dict = {};
 		output_cadastral_points = []
@@ -359,25 +359,50 @@ class KharifModelCalculator:
 			output_cadastral_points.append(point)
 		#~ return cadastral_points_dict, output_cadastral_points
 		return output_cadastral_points
-	
+
 	def set_container_polygon_of_points_for_layers(self, points, polygon_vector_layers):
 		for layer in polygon_vector_layers:
 			for p in points:
 				p.container_polygons[layer.name] = layer.get_polygon_containing_point(p)
 				#~ if p.container_polygons[layer.name] is None:	raise Exception(layer.name, p.qgsPoint.x(), p.qgsPoint.y())
-	
+
 	def set_slope_at_points(self, points):
 		for point in points:
-			point.slope = self.slope_layer.dataProvider().identify(
-							point.qgsPoint, QgsRaster.IdentifyFormatValue).results()[1]
-	
+			identify_results = self.slope_layer.dataProvider().identify(point.qgsPoint, QgsRaster.IdentifyFormatValue)
+			if identify_results.isValid():    point.slope = identify_results.results()[1]
+			else:                             point.slope = None
+
 	def set_crop_at_points(self, points,crop_name):
 		for point in points:
 			if (dict_lulc[point.container_polygons[LULC_LABEL][Desc].lower()] in ['agriculture', 'fallow land']):
 				point.crop_name =crop_name
 			elif(dict_lulc[point.container_polygons[LULC_LABEL][Desc].lower()] in ['deciduous - dense','deciduous open','scrub dense','scrub forest','scrub open']):
 				point.crop_name =other_LU_crops[dict_lulc[point.container_polygons[LULC_LABEL][Desc].lower()]]
-	
+
+	def filter_out_points_with_incomplete_data(self, points):
+		log_file = open(os.path.join(self.path, 'log'), 'a')
+		log_file.write(time.ctime(time.time()) + '\n')
+		filtered_points = []
+		for point in points:
+			if None not in ([
+				point.container_polygons[SOIL_LABEL],
+				point.container_polygons[LULC_LABEL],
+				point.slope
+			]):
+				filtered_points.append(point)
+			else:
+				if point.container_polygons[SOIL_LABEL] is None:
+					log_file.write('Soil polygon could not be obtained for point at: x = '
+								   + str(point.x()) + ', y = ' + str(point.y()))
+				if point.container_polygons[LULC_LABEL] is None:
+					log_file.write('LULC polygon could not be obtained for point at: x = '
+								   + str(point.x()) + ', y = ' + str(point.y()))
+				if point.slope is None:
+					log_file.write('Slope could not be obtained for point at: x = '
+								   + str(point.x()) + ', y = ' + str(point.y()))
+		log_file.close()
+		return filtered_points
+
 	def output_point_results_to_csv(self, pointwise_output_csv_filename):
 		csvwrite = open(self.path + pointwise_output_csv_filename,'w+b')
 		writer = csv.writer(csvwrite)
@@ -386,7 +411,7 @@ class KharifModelCalculator:
 			if not point.container_polygons[BOUNDARY_LABEL]:	continue
 			writer.writerow([point.qgsPoint.x(), point.qgsPoint.y(), point.budget.PET_minus_AET_monsoon_end, point.budget.PET_minus_AET_crop_end, point.budget.sm_crop_end, point.budget.infil_monsoon_end, point.budget.runoff_monsoon_end, point.budget.GW_rech_monsoon_end])
 		csvwrite.close()
-	
+
 	def compute_zonewise_budget(self):
 		self.zonewise_budgets = OrderedDict()
 		for zone_id in self.zone_points_dict:
@@ -396,13 +421,13 @@ class KharifModelCalculator:
 			self.zonewise_budgets[zone_id] = {'agricultural': OrderedDict(), 'non-agricultural': OrderedDict()}
 			all_agricultural_points = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] in ['agriculture', 'fallow land'], zone_points)
 			non_agricultural_points_dict = {lulc_type: filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] == lulc_type, zone_points)	for lulc_type in self.lulc_types if lulc_type not in ['agriculture', 'fallow land', 'water']}
-			
+
 			no_of_soil_type_points = {}
 			for soil_type in self.soil_types:
 				soil_type_points = filter(lambda p:	p.container_polygons[SOIL_LABEL][TEX].lower() == soil_type, all_agricultural_points)
 				no_of_soil_type_points[soil_type] = len(soil_type_points)
 				if no_of_soil_type_points[soil_type] == 0:	continue
-				
+
 				zb = self.zonewise_budgets[zone_id]['agricultural'][soil_type] = Budget()
 				zb.sm_crop_end = sum([p.budget.sm_crop_end	for p in soil_type_points]) / no_of_soil_type_points[soil_type]
 				zb.runoff_monsoon_end = sum([p.budget.runoff_monsoon_end	for p in soil_type_points]) / no_of_soil_type_points[soil_type]
@@ -423,7 +448,7 @@ class KharifModelCalculator:
 			zb.PET_minus_AET_monsoon_end = sum([p.budget.PET_minus_AET_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
 			zb.PET_minus_AET_crop_end = sum([p.budget.PET_minus_AET_crop_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
 
-	
+
 	def output_zonewise_budget_to_csv_agri(self, zonewise_budget_csv_filename, PET_sum_cropend, PET_sum,rain_sum):
 		csvwrite = open(self.path + zonewise_budget_csv_filename,'wb')
 		writer = csv.writer(csvwrite)
@@ -450,7 +475,7 @@ class KharifModelCalculator:
 			self.zonewise_budgets[zone_id] = {'agricultural': OrderedDict(), 'non-agricultural': OrderedDict()}
 			all_agricultural_points = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] in ['agriculture', 'fallow land'], zone_points)
 			non_agricultural_points_dict = {lulc_type: filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] == lulc_type, zone_points)	for lulc_type in self.lulc_types if lulc_type not in ['agriculture', 'fallow land', 'water']}
-			
+
 			no_of_agricultural_type_points = len(all_agricultural_points)
 			zb = self.zonewise_budgets[zone_id]['agricultural']['Agricultural Total'] = Budget()
 			zb.sm_crop_end = sum([p.budget.sm_crop_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
@@ -461,13 +486,13 @@ class KharifModelCalculator:
 			zb.GW_rech_monsoon_end = sum([p.budget.GW_rech_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
 			zb.PET_minus_AET_monsoon_end = sum([p.budget.PET_minus_AET_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
 			zb.PET_minus_AET_crop_end = sum([p.budget.PET_minus_AET_crop_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
-			
+
 			no_of_non_ag_lulc_type_points = {}
 			for lulc_type in non_agricultural_points_dict:
 				lulc_type_points = non_agricultural_points_dict[lulc_type]
 				no_of_non_ag_lulc_type_points[lulc_type] = len(lulc_type_points)
 				if no_of_non_ag_lulc_type_points[lulc_type] == 0:	continue
-				
+
 				zb = self.zonewise_budgets[zone_id]['non-agricultural'][lulc_type] = Budget()
 				zb.sm_crop_end = sum([p.budget.sm_crop_end	for p in lulc_type_points]) / no_of_non_ag_lulc_type_points[lulc_type]
 				zb.runoff_monsoon_end = sum([p.budget.runoff_monsoon_end	for p in lulc_type_points]) / no_of_non_ag_lulc_type_points[lulc_type]
@@ -477,7 +502,7 @@ class KharifModelCalculator:
 				zb.GW_rech_monsoon_end = sum([p.budget.GW_rech_monsoon_end	for p in lulc_type_points]) / no_of_non_ag_lulc_type_points[lulc_type]
 				zb.PET_minus_AET_monsoon_end = sum([p.budget.PET_minus_AET_monsoon_end	for p in lulc_type_points]) / no_of_non_ag_lulc_type_points[lulc_type]
 				zb.PET_minus_AET_crop_end = sum([p.budget.PET_minus_AET_crop_end	for p in lulc_type_points]) / no_of_non_ag_lulc_type_points[lulc_type]
-			
+
 			zb = Budget()
 			zb.sm_crop_end = sum([p.budget.sm_crop_end	for p in zone_points]) / no_of_zone_points
 			zb.runoff_monsoon_end = sum([p.budget.runoff_monsoon_end	for p in zone_points]) / no_of_zone_points
@@ -488,7 +513,7 @@ class KharifModelCalculator:
 			zb.PET_minus_AET_monsoon_end = sum([p.budget.PET_minus_AET_monsoon_end	for p in zone_points]) / no_of_zone_points
 			zb.PET_minus_AET_crop_end = sum([p.budget.PET_minus_AET_crop_end	for p in zone_points]) / no_of_zone_points
 			self.zonewise_budgets[zone_id]['zone'] = {'overall':zb}  # dict {'overall':zb} assigned instead of simple zb for convenience in iterating with ag and non-ag
-	
+
 	def output_zonewise_budget_to_csv(self, zonewise_budget_csv_filename, PET_sum_cropend, PET_sum,rain_sum):
 		csvwrite = open(self.path + zonewise_budget_csv_filename,'wb')
 		writer = csv.writer(csvwrite)
@@ -509,7 +534,7 @@ class KharifModelCalculator:
 	def compute_and_output_cadastral_vulnerability_to_csv(self, cadastral_vulnerability_csv_filename):
 		plot_vulnerability_dict = {
 			p.container_polygons[CADASTRAL_LABEL].id(): (p.budget.PET_minus_AET_crop_end,p.budget.PET_minus_AET_monsoon_end)
-				for p in self.output_cadastral_points
+				for p in self.output_cadastral_points if dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] in ['agriculture', 'fallow land']
 		}
 		sorted_keys = sorted(plot_vulnerability_dict.keys(), key=lambda ID:	plot_vulnerability_dict[ID], reverse=True)
 		csvwrite = open(self.path + cadastral_vulnerability_csv_filename,'w+b')
@@ -517,18 +542,21 @@ class KharifModelCalculator:
 		writer.writerow(['Plot ID', 'Crop end Vulnerability', 'Crop end Deficit Waterings', 'Monsoon end Vulnerability', 'Crop end Deficit Waterings'])
 		for key in sorted_keys:	writer.writerow([key, '{0:.2f}'.format(plot_vulnerability_dict[key][0]), round((plot_vulnerability_dict[key][0])/50), '{0:.2f}'.format(plot_vulnerability_dict[key][1]), round((plot_vulnerability_dict[key][1])/50)])
 		csvwrite.close()
-	
+
 	def compute_and_display_cadastral_vulnerability(self):
 		self.cadastral_points_per_plot = {}
 		for p in (self.output_grid_points+self.output_cadastral_points):
 			if p.container_polygons[CADASTRAL_LABEL] is None:	continue
+			if (dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()]
+                    not in ['agriculture', 'fallow land']): continue
 			if p.container_polygons[CADASTRAL_LABEL].id() in self.cadastral_points_per_plot:
 				self.cadastral_points_per_plot[p.container_polygons[CADASTRAL_LABEL].id()].append(p.budget.PET_minus_AET_crop_end)
 			else:
 				self.cadastral_points_per_plot[p.container_polygons[CADASTRAL_LABEL].id()] = [p.budget.PET_minus_AET_crop_end]
 		for k,v in self.cadastral_points_per_plot.items():
-			self.cadastral_points_per_plot[k] = sum(v)/len(v)
-		
+			if len(v) > 0:  self.cadastral_points_per_plot[k] = sum(v)/len(v)
+			else:           del self.cadastral_points_per_plot[k]
+
 		#	Create duplicate cadastral layer in memory
 		memory_cadastral_layer = QgsVectorLayer('Polygon?crs=epsg:32643', 'Cadastral Level Vulnerability', 'memory')
 		memory_cadastral_layer.startEditing()
@@ -544,14 +572,14 @@ class KharifModelCalculator:
 			new_feature['Deficit'] = self.cadastral_points_per_plot[dict_new_feature_id_to_old_feature_id[new_feature.id()]]
 			memory_cadastral_layer.updateFeature(new_feature)
 		memory_cadastral_layer.commitChanges()
-		
+
 		#	Graduated Rendering
 		graduated_symbol_renderer_range_list = []
 		ET_D_max = max(self.cadastral_points_per_plot.values())
 		opacity = 1
 		geometry_type = memory_cadastral_layer.geometryType()
 		intervals_count = CADASTRAL_VULNERABILITY_DISPLAY_COLOUR_INTERVALS_COUNT
-		dict_interval_colour = {0: [200, 200, 255], 1: [255, 255, 0], 2: [255, 0, 255], 3: [255, 0, 0]}
+		dict_interval_colour = {0: [200, 200, 255], 1: [255, 0, 255], 2: [255, 165, 0], 3: [255, 0, 0]}
 		for i in range(intervals_count):
 			interval_min = 0 if i == 0 else (ET_D_max * float(i)/CADASTRAL_VULNERABILITY_DISPLAY_COLOUR_INTERVALS_COUNT) + 0.01
 			interval_max = ET_D_max * float(i+1)/CADASTRAL_VULNERABILITY_DISPLAY_COLOUR_INTERVALS_COUNT
@@ -566,11 +594,16 @@ class KharifModelCalculator:
 		renderer.setMode(QgsGraduatedSymbolRendererV2.EqualInterval)
 		renderer.setClassAttribute('Deficit')
 		memory_cadastral_layer.setRendererV2(renderer)
-	
+
 		QgsMapLayerRegistry.instance().addMapLayer(memory_cadastral_layer)
+		memory_cadastral_layer.setCustomProperty('labeling', 'pal')
+		memory_cadastral_layer.setCustomProperty('labeling/enabled', 'true')
+		memory_cadastral_layer.setCustomProperty('labeling/fieldName', 'Number')
+		memory_cadastral_layer.setCustomProperty('labeling/fontSize', '10')
+		memory_cadastral_layer.setCustomProperty('labeling/placement', '0')
 		QgsVectorFileWriter.writeAsVectorFormat(memory_cadastral_layer, self.path+'/kharif_cadastral_level_vulnerability.shp', "utf-8", None, "ESRI Shapefile")
-	
-	def calculate(self, 
+
+	def calculate(self,
 					crop_name,
 					pointwise_output_csv_filename,
 					zonewise_budget_csv_filename,
@@ -581,17 +614,17 @@ class KharifModelCalculator:
 					end_date_index=182,
 					input_points_filename=None
 				):
-		
+
 		start_time = time.time()
 		self.crop_name = crop_name
 		self.pet_calculation(crop_name.lower(), sowing_threshold)
 		PET_sum = dict((crop,sum(pet_values[start_date_index:end_date_index+1]) )  for crop,pet_values in self.PET.items())
 		PET_sum_cropend = dict((crop,sum(pet_values[start_date_index:self.duration]) )  for crop,pet_values in self.PET.items())
 		rain_sum = sum(self.rain[start_date_index:end_date_index+1])
-		
+
 		self.soil_types = dict_SoilContent.keys();	self.soil_types.remove('soil type')
 		self.lulc_types = dict_RO.keys()
-		
+
 		self.output_grid_points = self.generate_output_points_grid(input_points_filename)
 		self.filter_out_points_outside_boundary()
 		self.set_container_polygon_of_points_for_layers(self.output_grid_points, [self.soil_layer, self.lulc_layer, self.cadastral_layer])
@@ -601,6 +634,9 @@ class KharifModelCalculator:
 			self.zone_points_dict[zone_id] = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] not in ['habitation', 'water'], self.zone_points_dict[zone_id])
 		self.set_slope_at_points(self.output_grid_points)
 		self.set_crop_at_points(self.output_grid_points,crop_name)
+		self.output_grid_points = self.filter_out_points_with_incomplete_data(self.output_grid_points)
+		for zone_id in self.zone_points_dict:
+			self.zone_points_dict[zone_id] = self.filter_out_points_with_incomplete_data(self.zone_points_dict[zone_id])
 		for point in self.output_grid_points:
 			point.run_model(self.rain, self.PET, PET_sum, PET_sum_cropend, start_date_index, end_date_index,self.duration-1)
 		self.output_point_results_to_csv(pointwise_output_csv_filename)
@@ -608,9 +644,9 @@ class KharifModelCalculator:
 		self.output_zonewise_budget_to_csv_agri(zonewise_budget_csv_filename, PET_sum_cropend,PET_sum, rain_sum)
 		self.compute_zonewise_budget_LU()
 		self.output_zonewise_budget_to_csv(zonewise_budget_csv_filename_LU, PET_sum_cropend,PET_sum, rain_sum)
-		
+
 		self.filter_out_cadastral_plots_outside_boundary()
-		#~ self.cadastral_points_dict, 
+		#~ self.cadastral_points_dict,
 		self.output_cadastral_points = self.generate_output_points_for_cadastral_plots()
 		#~ print 'self.cadastral_layer.feature_dict : ', self.cadastral_layer.feature_dict
 		self.set_container_polygon_of_points_for_layers(self.output_cadastral_points, [self.soil_layer, self.lulc_layer, self.cadastral_layer])
@@ -618,10 +654,11 @@ class KharifModelCalculator:
 		print 'Number of cadastral points to process : ', len(self.output_cadastral_points)
 		self.set_slope_at_points(self.output_cadastral_points)
 		self.set_crop_at_points(self.output_cadastral_points,crop_name)
+		self.output_cadastral_points = self.filter_out_points_with_incomplete_data(self.output_cadastral_points)
 		for point in self.output_cadastral_points:
 			point.run_model(self.rain, self.PET, PET_sum, PET_sum_cropend, start_date_index, end_date_index,self.duration-1)
 		self.compute_and_output_cadastral_vulnerability_to_csv(cadastral_vulnerability_csv_filename)
 		self.compute_and_display_cadastral_vulnerability()
-		
+
 		print("--- %s seconds ---" % (time.time() - start_time))
 		print("done")
