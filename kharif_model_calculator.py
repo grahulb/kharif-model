@@ -384,7 +384,7 @@ class KharifModelCalculator:
 		log_file.write(time.ctime(time.time()) + '\n')
 		filtered_points = []
 		for point in points:
-			if None not in ([
+			if (None not in [
 				point.container_polygons[SOIL_LABEL],
 				point.container_polygons[LULC_LABEL],
 				point.slope
