@@ -540,10 +540,10 @@ class KharifModelCalculator:
 
 			self.zonewise_budgets[zone_id]['ag_area'] = ag_area_total/10000.0
 			self.zonewise_budgets[zone_id]['non_ag_area'] = non_ag_area_total/10000.0
-			self.zonewise_budgets[zone_id]['gw_rech'] = gw_rech_in_mm/1000.0 * (ag_area_total + non_ag_area_total)
-			self.zonewise_budgets[zone_id]['runoff'] = runoff_in_mm/1000.0 * (ag_area_total + non_ag_area_total)
-			self.zonewise_budgets[zone_id]['sm'] = sm_in_mm/1000.0 * (ag_area_total)
-			self.zonewise_budgets[zone_id]['deficit'] = deficit_in_mm/1000.0 * (ag_area_total)
+			self.zonewise_budgets[zone_id]['gw_rech'] = (gw_rech_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
+			self.zonewise_budgets[zone_id]['runoff'] = (runoff_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
+			self.zonewise_budgets[zone_id]['sm'] = sm_in_mm
+			self.zonewise_budgets[zone_id]['deficit'] = deficit_in_mm
 
 	def output_zonewise_budget_areawise_to_csv(self, zonewise_budget_areawise_csv_filename):
 		csvwrite = open(self.path + zonewise_budget_areawise_csv_filename, 'wb')
