@@ -514,6 +514,49 @@ class KharifModelCalculator:
 			zb.PET_minus_AET_crop_end = sum([p.budget.PET_minus_AET_crop_end	for p in zone_points]) / no_of_zone_points
 			self.zonewise_budgets[zone_id]['zone'] = {'overall':zb}  # dict {'overall':zb} assigned instead of simple zb for convenience in iterating with ag and non-ag
 
+	def compute_zonewise_budget_areawise(self):
+		self.zonewise_budgets = OrderedDict()
+		for zone_id in self.zone_points_dict:
+			self.zonewise_budgets[zone_id] = {}
+			zone_points = self.zone_points_dict[zone_id]
+			gw_rech_in_mm = sum([p.budget.GW_rech_monsoon_end for p in zone_points]) / len(zone_points)
+			runoff_in_mm = sum([p.budget.runoff_monsoon_end for p in zone_points]) / len(zone_points)
+			ag_area_total = non_ag_area_total = 0
+			for ID, polygon in self.lulc_layer.feature_dict.items():
+				if dict_lulc[polygon[Desc].lower()] not in ['water', 'habitation']:
+					intersection_area = polygon.geometry().intersection(self.zones_layer.feature_dict[zone_id].geometry()).area()
+				if dict_lulc[polygon[Desc].lower()] in ['agriculture', 'fallow land']:
+					ag_area_total += intersection_area
+				elif dict_lulc[polygon[Desc].lower()] not in ['water', 'habitation']:
+					non_ag_area_total += intersection_area
+			zone_points_ag = [p	for p in zone_points
+							  	if dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()]
+							  		in ['agriculture', 'fallow land']]
+			zone_points_non_ag = [p for p in zone_points
+									if dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()]
+							  			not in ['agriculture', 'fallow land', 'water', 'habitation']]
+			sm_in_mm = sum([p.budget.sm_crop_end	for p in zone_points_ag])/len(zone_points_ag)
+			deficit_in_mm = sum([p.budget.PET_minus_AET_crop_end for p in zone_points_ag]) / len(zone_points_ag)
+
+			self.zonewise_budgets[zone_id]['ag_area'] = ag_area_total/10000.0
+			self.zonewise_budgets[zone_id]['non_ag_area'] = non_ag_area_total/10000.0
+			self.zonewise_budgets[zone_id]['gw_rech'] = gw_rech_in_mm/1000.0 * (ag_area_total + non_ag_area_total)
+			self.zonewise_budgets[zone_id]['runoff'] = runoff_in_mm/1000.0 * (ag_area_total + non_ag_area_total)
+			self.zonewise_budgets[zone_id]['sm'] = sm_in_mm/1000.0 * (ag_area_total)
+			self.zonewise_budgets[zone_id]['deficit'] = deficit_in_mm/1000.0 * (ag_area_total)
+
+	def output_zonewise_budget_areawise_to_csv(self, zonewise_budget_areawise_csv_filename):
+		csvwrite = open(self.path + zonewise_budget_areawise_csv_filename, 'wb')
+		writer = csv.writer(csvwrite)
+		writer.writerow([''] + ['zone-' + str(ID)	for ID in self.zonewise_budgets])
+		writer.writerow(['Ag. Area'] + [self.zonewise_budgets[ID]['ag_area'] for ID in self.zonewise_budgets])
+		writer.writerow(['Non-Ag. Area'] + [self.zonewise_budgets[ID]['non_ag_area'] for ID in self.zonewise_budgets])
+		writer.writerow(['GW Recharge'] + [self.zonewise_budgets[ID]['gw_rech'] for ID in self.zonewise_budgets])
+		writer.writerow(['Run-off'] + [self.zonewise_budgets[ID]['runoff'] for ID in self.zonewise_budgets])
+		writer.writerow(['SM'] + [self.zonewise_budgets[ID]['sm'] for ID in self.zonewise_budgets])
+		writer.writerow(['Deficit'] + [self.zonewise_budgets[ID]['deficit'] for ID in self.zonewise_budgets])
+		csvwrite.close()
+
 	def output_zonewise_budget_to_csv(self, zonewise_budget_csv_filename, PET_sum_cropend, PET_sum,rain_sum):
 		csvwrite = open(self.path + zonewise_budget_csv_filename,'wb')
 		writer = csv.writer(csvwrite)
@@ -608,6 +651,7 @@ class KharifModelCalculator:
 					pointwise_output_csv_filename,
 					zonewise_budget_csv_filename,
 					zonewise_budget_csv_filename_LU,
+			  		zonewise_budget_areawise_csv_filename,
 					cadastral_vulnerability_csv_filename,
 					sowing_threshold,
 					start_date_index=0,
@@ -644,6 +688,8 @@ class KharifModelCalculator:
 		self.output_zonewise_budget_to_csv_agri(zonewise_budget_csv_filename, PET_sum_cropend,PET_sum, rain_sum)
 		self.compute_zonewise_budget_LU()
 		self.output_zonewise_budget_to_csv(zonewise_budget_csv_filename_LU, PET_sum_cropend,PET_sum, rain_sum)
+		self.compute_zonewise_budget_areawise()
+		self.output_zonewise_budget_areawise_to_csv(zonewise_budget_areawise_csv_filename)
 
 		self.filter_out_cadastral_plots_outside_boundary()
 		#~ self.cadastral_points_dict,

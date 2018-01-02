@@ -235,10 +235,18 @@ class KharifModel:
 		pointwise_output_csv_filename = '/kharif_model_pointwise_output.csv'
 		zonewise_budget_csv_filename = '/kharif_model_zonewise_budget.csv'
 		zonewise_budget_csv_filename_LU = '/kharif_model_zonewise_LU_budget.csv'
+		zonewise_budget_areawise_csv_filename = '/kharif_model_zonewise_budget_area.csv'
 		cadastral_vulnerability_csv_filename = '/kharif_model_cadastral_vulnerability.csv'
 		model_calculator = KharifModelCalculator(path, zones_layer, soil_layer, lulc_layer, cadastral_layer, slope_layer, rainfall_csv)
 		
-		model_calculator.calculate(crop, pointwise_output_csv_filename, zonewise_budget_csv_filename, zonewise_budget_csv_filename_LU, cadastral_vulnerability_csv_filename, sowing_threshold)
+		model_calculator.calculate(crop,
+								   pointwise_output_csv_filename,
+								   zonewise_budget_csv_filename,
+								   zonewise_budget_csv_filename_LU,
+								   zonewise_budget_areawise_csv_filename,
+								   cadastral_vulnerability_csv_filename,
+								   sowing_threshold
+								   )
 		uri = 'file:///' + path + pointwise_output_csv_filename + '?delimiter=%s&crs=epsg:32643&xField=%s&yField=%s' % (',', 'X', 'Y')
 		kharif_model_output_layer = QgsVectorLayer(uri, 'Kharif Model Output','delimitedtext')
 		graduated_symbol_renderer_range_list = []
