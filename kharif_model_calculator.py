@@ -17,6 +17,7 @@ from math import exp
 from math import log
 from constants_dicts_lookups import *
 
+printed = False
 
 BOUNDARY_LABEL = 'Zones'
 SOIL_LABEL = 'Soil'
@@ -33,21 +34,19 @@ class Budget:
 
 	def summarize(self, PET_sum, PET_sum_cropend, start_date_index, end_date_index, crop_end_index):
 		self.sm_crop_end = self.sm[crop_end_index]
-		self.sm_monsoon_end = self.sm[end_date_index]
+		self.sm_monsoon_end = self.sm[182]
 		self.runoff_crop_end = sum(self.runoff[start_date_index:crop_end_index+1])
-		self.runoff_monsoon_end = sum(self.runoff[start_date_index:end_date_index+1])
+		self.runoff_monsoon_end = sum(self.runoff[start_date_index:183])
 		self.infil_crop_end = sum(self.infil[start_date_index:crop_end_index+1])
-		self.infil_monsoon_end = sum(self.infil[start_date_index:end_date_index+1])
+		self.infil_monsoon_end = sum(self.infil[start_date_index:183])
 		self.AET_crop_end = sum(self.AET[start_date_index:crop_end_index+1])
-		self.AET_monsoon_end = sum(self.AET[start_date_index:end_date_index+1])
+		self.AET_monsoon_end = sum(self.AET[start_date_index:183])
 		self.GW_rech_crop_end = sum(self.GW_rech[start_date_index:crop_end_index+1])
-		self.GW_rech_monsoon_end = sum(self.GW_rech[start_date_index:end_date_index+1])
+		self.GW_rech_monsoon_end = sum(self.GW_rech[start_date_index:183])
 		self.PET_minus_AET_monsoon_end = PET_sum - self.AET_monsoon_end
 		self.PET_minus_AET_post_monsoon= (PET_sum_cropend - self.AET_crop_end)-self.PET_minus_AET_monsoon_end
 		self.PET_minus_AET_crop_end= (PET_sum_cropend - self.AET_crop_end)
 
-	def get_PET_minus_AET(self, PET):
-		pass
 
 class Point:
 
@@ -65,14 +64,21 @@ class Point:
 		PET_sum_cropend = PET_sum_cropend[self.crop_name]
 		self.SM1_fraction = self.layer2_moisture = self.WP
 
-		for day in range (0,max(end_date_index,crop_end_index)+1):
+		self.not_small_KS = []
+		# self.not_small_SM = []
+		for day in range (365):
 			self.primary_runoff(day, rain)
 			self.aet(day, PET)
 			self.percolation_below_root_zone(day)
 			self.secondary_runoff(day)
 			self.percolation_to_GW(day)
-
+		# print len(self.not_small_KS)#, len(self.not_small_SM)
+		# if not printed:
+		# 	print PET[183:]
+		# 	printed = True
 		self.budget.summarize(PET_sum, PET_sum_cropend, start_date_index, end_date_index,crop_end_index)
+		self.budget.sm_crop_end -= self.WP_depth	# requirement expressed by users
+		self.budget.sm_monsoon_end -= self.WP_depth	# requirement expressed by users
 
 	def setup_for_daily_computations(self):
 		"""
@@ -125,6 +131,7 @@ class Point:
 		Primary Runoff 'Swat_RO' using SWAT equation 2:1.1.1
 		"""
 		self.budget.sm.append((self.SM1_fraction * self.SM1 + self.layer2_moisture * self.SM2) * 1000)
+		# if not printed and self.sm[-1] > 100:    self.
 		self.SW = self.budget.sm[-1] - self.WP_depth
 		S_swat = self.Smax*(1 - self.SW/(self.SW + exp(self.W1 - self.W2 * self.SW)))
 
@@ -146,12 +153,14 @@ class Point:
 		Actual Evapotranspiration 'AET' using FAO Irrigation and Drainage Paper 56, page 6 and 
 			page 161 equation 81
 		"""
+		global printed
 		if (self.SM1_fraction < self.WP):
 			KS= 0
 		elif (self.SM1_fraction > (self.FC *(1- self.depletion_factor) + self.depletion_factor * self.WP)):
 			KS = 1
 		else :
 			KS = (self.SM1_fraction - self.WP)/(self.FC - self.WP) /(1- self.depletion_factor)
+		if day > 182 and KS > 0.1:	self.not_small_KS.append(KS)
 		self.budget.AET.append( KS * PET[day] )
 
 	def percolation_below_root_zone(self, day):
@@ -273,7 +282,7 @@ class KharifModelCalculator:
 		self.initial_dry = compute_initial_period() if sowing_threshold != 0 else 0
 		self.duration=sum (i[0] for i in dict_crop[crop_name][0])
 		self.duration+=self.initial_dry
-		self.duration=max(self.duration,183)
+		self.duration=max(self.duration,365)
 		#Computation of ET0 from June to May
 		self.et0=[]
 		for i in range (0,len(a)):
@@ -409,6 +418,8 @@ class KharifModelCalculator:
 		writer.writerow(['X', 'Y','Monsoon PET-AET','Crop duration PET-AET' ,'Soil Moisture','Infiltration', 'Runoff', 'GW Recharge'])
 		for point in self.output_grid_points:
 			if not point.container_polygons[BOUNDARY_LABEL]:	continue
+			if point.budget.sm_crop_end > point.budget.infil_monsoon_end:
+				print point.container_polygons[SOIL_LABEL][Depth]
 			writer.writerow([point.qgsPoint.x(), point.qgsPoint.y(), point.budget.PET_minus_AET_monsoon_end, point.budget.PET_minus_AET_crop_end, point.budget.sm_crop_end, point.budget.infil_monsoon_end, point.budget.runoff_monsoon_end, point.budget.GW_rech_monsoon_end])
 		csvwrite.close()
 
@@ -517,8 +528,10 @@ class KharifModelCalculator:
 	def compute_zonewise_budget_areawise(self):
 		self.zonewise_budgets = OrderedDict()
 		for zone_id in self.zone_points_dict:
-			self.zonewise_budgets[zone_id] = {}
 			zone_points = self.zone_points_dict[zone_id]
+			if len(zone_points) == 0:	continue
+			self.zonewise_budgets[zone_id] = {}
+			rain_in_mm = sum(self.rain[:183])
 			gw_rech_in_mm = sum([p.budget.GW_rech_monsoon_end for p in zone_points]) / len(zone_points)
 			runoff_in_mm = sum([p.budget.runoff_monsoon_end for p in zone_points]) / len(zone_points)
 			ag_area_total = non_ag_area_total = 0
@@ -540,6 +553,7 @@ class KharifModelCalculator:
 
 			self.zonewise_budgets[zone_id]['ag_area'] = ag_area_total/10000.0
 			self.zonewise_budgets[zone_id]['non_ag_area'] = non_ag_area_total/10000.0
+			self.zonewise_budgets[zone_id]['rain'] = (rain_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
 			self.zonewise_budgets[zone_id]['gw_rech'] = (gw_rech_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
 			self.zonewise_budgets[zone_id]['runoff'] = (runoff_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
 			self.zonewise_budgets[zone_id]['sm'] = sm_in_mm
@@ -551,9 +565,10 @@ class KharifModelCalculator:
 		writer.writerow([''] + ['zone-' + str(ID)	for ID in self.zonewise_budgets])
 		writer.writerow(['Ag. Area'] + [self.zonewise_budgets[ID]['ag_area'] for ID in self.zonewise_budgets])
 		writer.writerow(['Non-Ag. Area'] + [self.zonewise_budgets[ID]['non_ag_area'] for ID in self.zonewise_budgets])
+		writer.writerow(['Rainfall'] + [self.zonewise_budgets[ID]['rain'] for ID in self.zonewise_budgets])
 		writer.writerow(['GW Recharge'] + [self.zonewise_budgets[ID]['gw_rech'] for ID in self.zonewise_budgets])
 		writer.writerow(['Run-off'] + [self.zonewise_budgets[ID]['runoff'] for ID in self.zonewise_budgets])
-		writer.writerow(['SM'] + [self.zonewise_budgets[ID]['sm'] for ID in self.zonewise_budgets])
+		writer.writerow(['Usable SM'] + [self.zonewise_budgets[ID]['sm'] for ID in self.zonewise_budgets])
 		writer.writerow(['Deficit'] + [self.zonewise_budgets[ID]['deficit'] for ID in self.zonewise_budgets])
 		csvwrite.close()
 
@@ -681,8 +696,11 @@ class KharifModelCalculator:
 		for zone_id in self.zone_points_dict:
 			self.zone_points_dict[zone_id] = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] not in ['habitation', 'water'], self.zone_points_dict[zone_id])
 		self.set_crop_at_points(self.output_grid_points,crop_name)
+		i = 0
 		for point in self.output_grid_points:
 			point.run_model(self.rain, self.PET, PET_sum, PET_sum_cropend, start_date_index, end_date_index,self.duration-1)
+			if point.budget.sm_crop_end > 100:	i += 1
+		print 'no. of points with sm > 100 : ', i
 		self.output_point_results_to_csv(pointwise_output_csv_filename)
 		self.compute_zonewise_budget()
 		self.output_zonewise_budget_to_csv_agri(zonewise_budget_csv_filename, PET_sum_cropend,PET_sum, rain_sum)
