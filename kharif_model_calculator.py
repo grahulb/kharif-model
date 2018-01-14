@@ -553,7 +553,8 @@ class KharifModelCalculator:
 
 			self.zonewise_budgets[zone_id]['ag_area'] = ag_area_total/10000.0
 			self.zonewise_budgets[zone_id]['non_ag_area'] = non_ag_area_total/10000.0
-			self.zonewise_budgets[zone_id]['rain'] = (rain_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
+			self.zonewise_budgets[zone_id]['rain_mm'] = rain_in_mm
+			self.zonewise_budgets[zone_id]['rain_TCM'] = (rain_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
 			self.zonewise_budgets[zone_id]['gw_rech'] = (gw_rech_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
 			self.zonewise_budgets[zone_id]['runoff'] = (runoff_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
 			self.zonewise_budgets[zone_id]['sm'] = sm_in_mm
@@ -565,7 +566,8 @@ class KharifModelCalculator:
 		writer.writerow([''] + ['zone-' + str(ID)	for ID in self.zonewise_budgets])
 		writer.writerow(['Ag. Area'] + [self.zonewise_budgets[ID]['ag_area'] for ID in self.zonewise_budgets])
 		writer.writerow(['Non-Ag. Area'] + [self.zonewise_budgets[ID]['non_ag_area'] for ID in self.zonewise_budgets])
-		writer.writerow(['Rainfall'] + [self.zonewise_budgets[ID]['rain'] for ID in self.zonewise_budgets])
+		writer.writerow(['Rainfall in mm'] + [self.zonewise_budgets[ID]['rain_mm'] for ID in self.zonewise_budgets])
+		writer.writerow(['Rainfall in TCM'] + [self.zonewise_budgets[ID]['rain_TCM'] for ID in self.zonewise_budgets])
 		writer.writerow(['GW Recharge'] + [self.zonewise_budgets[ID]['gw_rech'] for ID in self.zonewise_budgets])
 		writer.writerow(['Run-off'] + [self.zonewise_budgets[ID]['runoff'] for ID in self.zonewise_budgets])
 		writer.writerow(['Usable SM'] + [self.zonewise_budgets[ID]['sm'] for ID in self.zonewise_budgets])
