@@ -426,10 +426,15 @@ class KharifModelCalculator:
 	def compute_zonewise_budget(self):
 		self.zonewise_budgets = OrderedDict()
 		for zone_id in self.zone_points_dict:
+			if (self.zones_layer.qgsLayer.fieldNameIndex('Zone_name') != -1):
+				zone_name = self.zones_layer.feature_dict[zone_id]['Zone_name']
+			else:
+				zone_name = zone_id
+
 			zone_points = self.zone_points_dict[zone_id]
 			no_of_zone_points = len(zone_points)
 			if no_of_zone_points == 0:	continue
-			self.zonewise_budgets[zone_id] = {'agricultural': OrderedDict(), 'non-agricultural': OrderedDict()}
+			self.zonewise_budgets[zone_name] = {'agricultural': OrderedDict(), 'non-agricultural': OrderedDict()}
 			all_agricultural_points = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] in ['agriculture', 'fallow land'], zone_points)
 			non_agricultural_points_dict = {lulc_type: filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] == lulc_type, zone_points)	for lulc_type in self.lulc_types if lulc_type not in ['agriculture', 'fallow land', 'water']}
 
@@ -439,7 +444,7 @@ class KharifModelCalculator:
 				no_of_soil_type_points[soil_type] = len(soil_type_points)
 				if no_of_soil_type_points[soil_type] == 0:	continue
 
-				zb = self.zonewise_budgets[zone_id]['agricultural'][soil_type] = Budget()
+				zb = self.zonewise_budgets[zone_name]['agricultural'][soil_type] = Budget()
 				zb.sm_crop_end = sum([p.budget.sm_crop_end	for p in soil_type_points]) / no_of_soil_type_points[soil_type]
 				zb.runoff_monsoon_end = sum([p.budget.runoff_monsoon_end	for p in soil_type_points]) / no_of_soil_type_points[soil_type]
 				zb.infil_monsoon_end = sum([p.budget.infil_monsoon_end	for p in soil_type_points]) / no_of_soil_type_points[soil_type]
@@ -449,7 +454,7 @@ class KharifModelCalculator:
 				zb.PET_minus_AET_monsoon_end = sum([p.budget.PET_minus_AET_monsoon_end	for p in soil_type_points]) / no_of_soil_type_points[soil_type]
 				zb.PET_minus_AET_crop_end = sum([p.budget.PET_minus_AET_crop_end	for p in soil_type_points]) / no_of_soil_type_points[soil_type]
 			no_of_agricultural_type_points = len(all_agricultural_points)
-			zb = self.zonewise_budgets[zone_id]['agricultural']['Agricultural Total'] = Budget()
+			zb = self.zonewise_budgets[zone_name]['agricultural']['Agricultural Total'] = Budget()
 			zb.sm_crop_end = sum([p.budget.sm_crop_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
 			zb.runoff_monsoon_end = sum([p.budget.runoff_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
 			zb.infil_monsoon_end = sum([p.budget.infil_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
@@ -480,15 +485,19 @@ class KharifModelCalculator:
 	def compute_zonewise_budget_LU(self):
 		self.zonewise_budgets = OrderedDict()
 		for zone_id in self.zone_points_dict:
+			if(self.zones_layer.qgsLayer.fieldNameIndex('Zone_name') != -1):
+				zone_name = self.zones_layer.feature_dict[zone_id]['Zone_name']
+			else:
+				zone_name = zone_id
 			zone_points = self.zone_points_dict[zone_id]
 			no_of_zone_points = len(zone_points)
 			if no_of_zone_points == 0:	continue
-			self.zonewise_budgets[zone_id] = {'agricultural': OrderedDict(), 'non-agricultural': OrderedDict()}
+			self.zonewise_budgets[zone_name] = {'agricultural': OrderedDict(), 'non-agricultural': OrderedDict()}
 			all_agricultural_points = filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] in ['agriculture', 'fallow land'], zone_points)
 			non_agricultural_points_dict = {lulc_type: filter(lambda p:	dict_lulc[p.container_polygons[LULC_LABEL][Desc].lower()] == lulc_type, zone_points)	for lulc_type in self.lulc_types if lulc_type not in ['agriculture', 'fallow land', 'water']}
 
 			no_of_agricultural_type_points = len(all_agricultural_points)
-			zb = self.zonewise_budgets[zone_id]['agricultural']['Agricultural Total'] = Budget()
+			zb = self.zonewise_budgets[zone_name]['agricultural']['Agricultural Total'] = Budget()
 			zb.sm_crop_end = sum([p.budget.sm_crop_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
 			zb.runoff_monsoon_end = sum([p.budget.runoff_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
 			zb.infil_monsoon_end = sum([p.budget.infil_monsoon_end	for p in all_agricultural_points]) / no_of_agricultural_type_points
@@ -504,7 +513,7 @@ class KharifModelCalculator:
 				no_of_non_ag_lulc_type_points[lulc_type] = len(lulc_type_points)
 				if no_of_non_ag_lulc_type_points[lulc_type] == 0:	continue
 
-				zb = self.zonewise_budgets[zone_id]['non-agricultural'][lulc_type] = Budget()
+				zb = self.zonewise_budgets[zone_name]['non-agricultural'][lulc_type] = Budget()
 				zb.sm_crop_end = sum([p.budget.sm_crop_end	for p in lulc_type_points]) / no_of_non_ag_lulc_type_points[lulc_type]
 				zb.runoff_monsoon_end = sum([p.budget.runoff_monsoon_end	for p in lulc_type_points]) / no_of_non_ag_lulc_type_points[lulc_type]
 				zb.infil_monsoon_end = sum([p.budget.infil_monsoon_end	for p in lulc_type_points]) / no_of_non_ag_lulc_type_points[lulc_type]
@@ -523,14 +532,19 @@ class KharifModelCalculator:
 			zb.GW_rech_monsoon_end = sum([p.budget.GW_rech_monsoon_end	for p in zone_points]) / no_of_zone_points
 			zb.PET_minus_AET_monsoon_end = sum([p.budget.PET_minus_AET_monsoon_end	for p in zone_points]) / no_of_zone_points
 			zb.PET_minus_AET_crop_end = sum([p.budget.PET_minus_AET_crop_end	for p in zone_points]) / no_of_zone_points
-			self.zonewise_budgets[zone_id]['zone'] = {'overall':zb}  # dict {'overall':zb} assigned instead of simple zb for convenience in iterating with ag and non-ag
+			self.zonewise_budgets[zone_name]['zone'] = {'overall':zb}  # dict {'overall':zb} assigned instead of simple zb for convenience in iterating with ag and non-ag
 
 	def compute_zonewise_budget_areawise(self):
 		self.zonewise_budgets = OrderedDict()
 		for zone_id in self.zone_points_dict:
+			if (self.zones_layer.qgsLayer.fieldNameIndex('Zone_name') != -1):
+				zone_name = self.zones_layer.feature_dict[zone_id]['Zone_name']
+			else:
+				zone_name = zone_id
+
 			zone_points = self.zone_points_dict[zone_id]
 			if len(zone_points) == 0:	continue
-			self.zonewise_budgets[zone_id] = {}
+			self.zonewise_budgets[zone_name] = {}
 			rain_in_mm = sum(self.rain[:183])
 			gw_rech_in_mm = sum([p.budget.GW_rech_monsoon_end for p in zone_points]) / len(zone_points)
 			runoff_in_mm = sum([p.budget.runoff_monsoon_end for p in zone_points]) / len(zone_points)
@@ -551,14 +565,14 @@ class KharifModelCalculator:
 			sm_in_mm = sum([p.budget.sm_crop_end	for p in zone_points_ag])/len(zone_points_ag)
 			deficit_in_mm = sum([p.budget.PET_minus_AET_crop_end for p in zone_points_ag]) / len(zone_points_ag)
 
-			self.zonewise_budgets[zone_id]['ag_area'] = ag_area_total/10000.0
-			self.zonewise_budgets[zone_id]['non_ag_area'] = non_ag_area_total/10000.0
-			self.zonewise_budgets[zone_id]['rain_mm'] = rain_in_mm
-			self.zonewise_budgets[zone_id]['rain_TCM'] = (rain_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
-			self.zonewise_budgets[zone_id]['gw_rech'] = (gw_rech_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
-			self.zonewise_budgets[zone_id]['runoff'] = (runoff_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
-			self.zonewise_budgets[zone_id]['sm'] = sm_in_mm
-			self.zonewise_budgets[zone_id]['deficit'] = deficit_in_mm
+			self.zonewise_budgets[zone_name]['ag_area'] = ag_area_total/10000.0
+			self.zonewise_budgets[zone_name]['non_ag_area'] = non_ag_area_total/10000.0
+			self.zonewise_budgets[zone_name]['rain_mm'] = rain_in_mm
+			self.zonewise_budgets[zone_name]['rain_TCM'] = (rain_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
+			self.zonewise_budgets[zone_name]['gw_rech'] = (gw_rech_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
+			self.zonewise_budgets[zone_name]['runoff'] = (runoff_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
+			self.zonewise_budgets[zone_name]['sm'] = sm_in_mm
+			self.zonewise_budgets[zone_name]['deficit'] = deficit_in_mm
 
 	def output_zonewise_budget_areawise_to_csv(self, zonewise_budget_areawise_csv_filename):
 		csvwrite = open(self.path + zonewise_budget_areawise_csv_filename, 'wb')
