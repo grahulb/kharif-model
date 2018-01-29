@@ -1,6 +1,6 @@
 ########	Constants Start	########
 
-STEP = 250.0
+STEP = 100.0
 CADASTRAL_VULNERABILITY_DISPLAY_COLOUR_INTERVALS_COUNT = 4
 NEW_LU= 'LU_Type'
 Desc = 'Descriptio'
