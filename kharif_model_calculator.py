@@ -244,7 +244,7 @@ class KharifModelCalculator:
 
 		#~ rainfall_csv_path = path + '/rainfall.csv'
 		rainfall_csv = open(rainfall_csv_path)
-		self.rain = [int(row["Rainfall"]) for row in csv.DictReader(rainfall_csv)]
+		self.rain = [float(row["Rainfall"]) for row in csv.DictReader(rainfall_csv)]
 		print 'len(rain) = ', len(self.rain)
 
 	def pet_calculation(self, crop_name, sowing_threshold):
@@ -571,6 +571,7 @@ class KharifModelCalculator:
 			sm_in_mm = sum([p.budget.sm_crop_end	for p in zone_points_ag])/len(zone_points_ag)
 			sm_monsoon_in_mm = sum([p.budget.sm_monsoon_end	for p in zone_points_ag])/len(zone_points_ag)
 			deficit_in_mm = sum([p.budget.PET_minus_AET_crop_end for p in zone_points_ag]) / len(zone_points_ag)
+			monsoon_deficit_in_mm = sum([p.budget.PET_minus_AET_monsoon_end for p in zone_points_ag]) / len(zone_points_ag)
 
 			self.zonewise_budgets[zone_name]['ag_area'] = ag_area_total/10000.0
 			self.zonewise_budgets[zone_name]['non_ag_area'] = non_ag_area_total/10000.0
@@ -580,6 +581,7 @@ class KharifModelCalculator:
 			self.zonewise_budgets[zone_name]['runoff'] = (runoff_in_mm/1000.0 * (ag_area_total + non_ag_area_total)) / 1000
 			self.zonewise_budgets[zone_name]['sm'] = sm_in_mm
 			self.zonewise_budgets[zone_name]['sm_monsoon'] = sm_monsoon_in_mm
+			self.zonewise_budgets[zone_name]['monsoon_deficit'] = monsoon_deficit_in_mm
 			self.zonewise_budgets[zone_name]['deficit'] = deficit_in_mm
 
 	def output_zonewise_budget_areawise_to_csv(self, zonewise_budget_areawise_csv_filename):
@@ -594,6 +596,7 @@ class KharifModelCalculator:
 		writer.writerow(['Run-off'] + [self.zonewise_budgets[ID]['runoff'] for ID in self.zonewise_budgets])
 		writer.writerow(['Usable SM'] + [self.zonewise_budgets[ID]['sm'] for ID in self.zonewise_budgets])
 		writer.writerow(['Usable SM after Monsoon'] + [self.zonewise_budgets[ID]['sm_monsoon'] for ID in self.zonewise_budgets])
+		writer.writerow(['Monsoon Deficit'] + [self.zonewise_budgets[ID]['monsoon_deficit'] for ID in self.zonewise_budgets])
 		writer.writerow(['Deficit'] + [self.zonewise_budgets[ID]['deficit'] for ID in self.zonewise_budgets])
 		csvwrite.close()
 
@@ -703,7 +706,7 @@ class KharifModelCalculator:
 		start_time = time.time()
 		self.crop_name = crop_name
 		self.pet_calculation(crop_name.lower(), sowing_threshold)
-		PET_sum = dict((crop,sum(pet_values[start_date_index:end_date_index+1]) )  for crop,pet_values in self.PET.items())
+		PET_sum = dict((crop,sum(pet_values[start_date_index:123]) )  for crop,pet_values in self.PET.items())
 		PET_sum_cropend = dict((crop,sum(pet_values[start_date_index:self.duration]) )  for crop,pet_values in self.PET.items())
 		rain_sum = sum(self.rain[start_date_index:end_date_index+1])
 
