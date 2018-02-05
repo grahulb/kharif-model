@@ -337,17 +337,39 @@ class KharifModelCalculator:
 			# Read from file
 			pass
 		output_points = [Point(QgsPoint(x,y))	for x in x_List	for y in y_List]
+		'''print "No of points: ", len (output_points)
+		csvwrite = open(self.path + "/tt.csv",'w+b')
+		writer = csv.writer(csvwrite)
+		writer.writerow(['X', 'Y'])
+		writer.writerow([xminB,yminB])
+		writer.writerow([xminB,ymaxB])
+		writer.writerow([xmaxB,yminB])
+		writer.writerow([xmaxB,ymaxB])		
+		csvwrite.close()'''
+
 		return output_points
 
 	def filter_out_points_outside_boundary(self):
 		filtered_points = []
+		'''csvwrite = open(self.path + "/tt1.csv",'w+b')
+		writer = csv.writer(csvwrite)
+		writer.writerow(['X', 'Y'])'''
+
 		for point in self.output_grid_points:
 			polygon = self.zones_layer.get_polygon_containing_point(point)
 			if polygon is not None:
 				point.container_polygons[BOUNDARY_LABEL] = polygon
 				self.zone_points_dict[polygon.id()].append(point)
 				filtered_points.append(point)
+			'''else:
+				writer.writerow([point.qgsPoint.x(), point.qgsPoint.y()])
+		csvwrite.close()'''
+
 		self.output_grid_points = filtered_points
+		'''print(len(filtered_points))
+		for zone_id in self.zone_points_dict:
+			print str(self.zones_layer.feature_dict[zone_id]['Zone_name'])+ ' '+ str(len(self.zone_points_dict[zone_id]))'''
+
 
 	def generate_output_points_for_cadastral_plots(self):
 		#~ cadastral_points_dict = {};

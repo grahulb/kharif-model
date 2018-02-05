@@ -76,7 +76,8 @@ dict_lulc = {
 	'lakes/ ponds - permanent':'water',
 	'lakes/ ponds - seasonal':'water',
 	'deciduous (dry/ moist/ thorn) - open': 'deciduous open',
-	'deciduous (dry/ moist/ thorn) - dense/ closed' :  'deciduous - dense'	
+	'deciduous (dry/ moist/ thorn) - dense/ closed' :  'deciduous - dense',
+	'built up - sparse (discontinuous)' : 'habitation'	
 }
 
 #Lookup for soiltype and soil dependent values for computation 
