@@ -188,7 +188,7 @@ class KharifModel:
 	def run(self):
 		"""Run method that performs all the real work"""
 		
-		#~ path = 'C:/Users/Rahul/Desktop/Test_Gondala/Test_Gondala'
+		#~path = 'C:/Users/Sudhanshu/Downloads/Hivre_Bajar'
 		#~ path = 'C:/Users/Rahul/Desktop/Gondala1'
 		#~ path = 'C:/Users/Rahul/Desktop/BW_new'
 		path = ''
