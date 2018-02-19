@@ -34,15 +34,15 @@ class Budget:
 
 	def summarize(self, PET_sum, PET_sum_cropend, start_date_index, end_date_index, crop_end_index):
 		self.sm_crop_end = self.sm[crop_end_index]
-		self.sm_monsoon_end = self.sm[123]
+		self.sm_monsoon_end = self.sm[MONSOON_END_DATE_INDEX]
 		self.runoff_crop_end = sum(self.runoff[start_date_index:crop_end_index+1])
-		self.runoff_monsoon_end = sum(self.runoff[start_date_index:123])
+		self.runoff_monsoon_end = sum(self.runoff[start_date_index:MONSOON_END_DATE_INDEX])
 		self.infil_crop_end = sum(self.infil[start_date_index:crop_end_index+1])
-		self.infil_monsoon_end = sum(self.infil[start_date_index:123])
+		self.infil_monsoon_end = sum(self.infil[start_date_index:MONSOON_END_DATE_INDEX])
 		self.AET_crop_end = sum(self.AET[start_date_index:crop_end_index+1])
-		self.AET_monsoon_end = sum(self.AET[start_date_index:123])
+		self.AET_monsoon_end = sum(self.AET[start_date_index:MONSOON_END_DATE_INDEX])
 		self.GW_rech_crop_end = sum(self.GW_rech[start_date_index:crop_end_index+1])
-		self.GW_rech_monsoon_end = sum(self.GW_rech[start_date_index:123])
+		self.GW_rech_monsoon_end = sum(self.GW_rech[start_date_index:MONSOON_END_DATE_INDEX])
 		self.PET_minus_AET_monsoon_end = PET_sum - self.AET_monsoon_end
 		self.PET_minus_AET_post_monsoon= (PET_sum_cropend - self.AET_crop_end)-self.PET_minus_AET_monsoon_end
 		self.PET_minus_AET_crop_end= (PET_sum_cropend - self.AET_crop_end)
@@ -264,7 +264,7 @@ class KharifModelCalculator:
 				Kc_crop.extend([Kc]*stage)
 			Kc_crop = [0]*self.initial_dry+ Kc_crop
 			Kc_len=len(Kc_crop)
-			if(Kc_len<= self.duration):
+			if(Kc_len <= self.duration):
 				Kc_crop = Kc_crop + [0]*(self.duration-Kc_len)
 			elif(Kc_len>self.duration):
 				Kc_crop = Kc_crop[0:self.duration]
@@ -280,9 +280,13 @@ class KharifModelCalculator:
 					break
 			return i
 		self.initial_dry = compute_initial_period() if sowing_threshold != 0 else 0
-		self.duration=sum (i[0] for i in dict_crop[crop_name][0])
-		self.duration+=self.initial_dry
-		self.duration=max(self.duration,365)
+		self.crop_end_index =sum (i[0] for i in dict_crop[crop_name][0])
+		print "1:",self.crop_end_index
+		self.crop_end_index+=self.initial_dry
+		print "2:", self.crop_end_index
+		self.crop_end_index = min(self.crop_end_index,365)
+		print "3:",self.crop_end_index
+		self.duration =365
 		#Computation of ET0 from June to May
 		self.et0=[]
 		for i in range (0,len(a)):
@@ -738,8 +742,8 @@ class KharifModelCalculator:
 		start_time = time.time()
 		self.crop_name = crop_name
 		self.pet_calculation(crop_name.lower(), sowing_threshold)
-		PET_sum = dict((crop,sum(pet_values[start_date_index:123]) )  for crop,pet_values in self.PET.items())
-		PET_sum_cropend = dict((crop,sum(pet_values[start_date_index:self.duration]) )  for crop,pet_values in self.PET.items())
+		PET_sum = dict((crop,sum(pet_values[start_date_index:MONSOON_END_DATE_INDEX]) )  for crop,pet_values in self.PET.items())
+		PET_sum_cropend = dict((crop,sum(pet_values[start_date_index:self.crop_end_index]) )  for crop,pet_values in self.PET.items())
 		rain_sum = sum(self.rain[start_date_index:end_date_index+1])
 
 		self.soil_types = dict_SoilContent.keys();	self.soil_types.remove('soil type')
@@ -761,7 +765,7 @@ class KharifModelCalculator:
 		i = 0
 		
 		for point in self.output_grid_points:
-			point.run_model(self.rain, self.PET, PET_sum, PET_sum_cropend, start_date_index, end_date_index,self.duration-1)
+			point.run_model(self.rain, self.PET, PET_sum, PET_sum_cropend, start_date_index, end_date_index,self.crop_end_index-1)
 			if point.budget.sm_crop_end > 100:	i += 1
 		print 'no. of points with sm > 100 : ', i
 		self.output_point_results_to_csv(pointwise_output_csv_filename)
@@ -783,7 +787,7 @@ class KharifModelCalculator:
 		print 'Number of cadastral points to process : ', len(self.output_cadastral_points)
 		self.set_crop_at_points(self.output_cadastral_points,crop_name)
 		for point in self.output_cadastral_points:
-			point.run_model(self.rain, self.PET, PET_sum, PET_sum_cropend, start_date_index, end_date_index,self.duration-1)
+			point.run_model(self.rain, self.PET, PET_sum, PET_sum_cropend, start_date_index, end_date_index,self.crop_end_index-1)
 		self.compute_and_output_cadastral_vulnerability_to_csv(cadastral_vulnerability_csv_filename)
 		self.compute_and_display_cadastral_vulnerability()
 

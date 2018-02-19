@@ -1,12 +1,17 @@
 ########	Constants Start	########
-
+#Value for setting up step distance (Distance between sampling points)
 STEP = 100.0
 CADASTRAL_VULNERABILITY_DISPLAY_COLOUR_INTERVALS_COUNT = 4
-NEW_LU= 'LU_Type'
+#Name of the column specifying land use type in lulc_layer
 Desc = 'Descriptio'
+#Name of the column specifying soil type in soil_layer
 TEX = 'TEXTURE'
+#Name of the column specifying soil depth type in soil_layer
 Depth = 'DEPTH'
-
+#Constant value for sowing threshold (Used to display default value in UI spinbox)
+DEFAULT_SOWING_THRESHOLD = 30
+#Constant value for monsoon end date index (starting from June 1 as index 0)
+MONSOON_END_DATE_INDEX = 133
 ########	Constants End	########
 
 
