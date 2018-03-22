@@ -45,6 +45,7 @@ class KharifModelDialog(QtGui.QDialog, FORM_CLASS):
 		
 		self.last_path = ''
 		self.sowing_threshold.setValue(DEFAULT_SOWING_THRESHOLD)
+		self.monsoon_end.setValue(MONSOON_END_DATE_INDEX-123)
 		self.folder_path_browse.clicked.connect(lambda : self.on_browse(self.folder_path, 'Folder containing the data-set', folder=True))
 		self.zones_layer_browse.clicked.connect(lambda : self.on_browse(self.zones_layer_filename, 'Zones Vector Layer', 'Shapefiles (*.shp)'))
 		self.soil_layer_browse.clicked.connect(lambda : self.on_browse(self.soil_layer_filename, 'Soil-cover Vector Layer', 'Shapefiles (*.shp)'))

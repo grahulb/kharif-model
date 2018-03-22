@@ -205,6 +205,8 @@ class KharifModel:
 			sowing_threshold = 30
 			crop = 'soyabean'
 			interval_points = [50, 100]
+			monsoon_end_date_index = MONSOON_END_DATE_INDEX
+
 		else:
 			self.dlg.show()
 			if self.dlg.exec_() == QFileDialog.Rejected:	return
@@ -220,6 +222,7 @@ class KharifModel:
 			
 			rainfall_csv = self.dlg.rainfall_csv_filename.text()
 			sowing_threshold = self.dlg.sowing_threshold.value()
+			monsoon_end_date_index = self.dlg.monsoon_end.value()+123
 			crop = self.dlg.crop_combo_box.currentText()
 			interval_points = [int(self.dlg.colour_code_intervals_list_widget.item(i).text().split('-')[0])	for i in range(1,self.dlg.colour_code_intervals_list_widget.count())]
 			
@@ -245,7 +248,8 @@ class KharifModel:
 								   zonewise_budget_csv_filename_LU,
 								   zonewise_budget_areawise_csv_filename,
 								   cadastral_vulnerability_csv_filename,
-								   sowing_threshold
+								   sowing_threshold,
+								   monsoon_end_date_index
 								   )
 		uri = 'file:///' + path + pointwise_output_csv_filename + '?delimiter=%s&crs=epsg:32643&xField=%s&yField=%s' % (',', 'X', 'Y')
 		kharif_model_output_layer = QgsVectorLayer(uri, 'Kharif Model Output','delimitedtext')

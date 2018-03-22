@@ -57,6 +57,7 @@ dict_lulc = {
 	'tree clad area - dense/ closed':'deciduous - dense',
 	'fallow land':'fallow land',
 	'built up - compactcontinuous':'habitation',
+	'built up - compact (continuous)': 'habitation',
 	'built up - sparsediscontinuous':'habitation',
 	'industrial area':'habitation',
 	'rural':'habitation',
